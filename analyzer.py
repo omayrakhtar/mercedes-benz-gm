@@ -9,24 +9,33 @@ import pandas as pd
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from sklearn import utils
-from sklearn.linear_model import RandomizedLogisticRegression, LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
-from sklearn.preprocessing import normalize,scale,LabelEncoder
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import GridSearchCV,StratifiedKFold,cross_val_score,train_test_split
-import xgboost
 
 
 def read_file():
     data = pd.read_csv("data/train/train.csv")
-    #print (set(data['y']))
-    print len(data)
-    print len(list(data))
-    print list(data)
+    print data.describe()
+
+    #y_boxplot(data)
+    y_id_scatterplot(data)
+
 
     return None,None
+
+def y_id_scatterplot(data):
+
+    id = [x for x in range(0,len(data))]
+    y = np.array(data['y'])
+    plt.scatter(id,np.sort(y))
+    plt.show()
+
+def y_boxplot(data):
+
+    # creates boxplot for the response variable
+    y = np.array(data['y'])
+    fig = plt.figure(1, figsize=(9, 6))
+    ax = fig.add_subplot(111)
+    bp = ax.boxplot(y)
+    plt.show(bp)
 
 def main():
 
