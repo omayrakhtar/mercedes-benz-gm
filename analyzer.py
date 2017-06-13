@@ -9,17 +9,43 @@ import pandas as pd
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import RandomizedLogisticRegression, LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.decomposition import PCA
+from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import normalize,scale
+
 
 
 def read_file():
+
     data = pd.read_csv("data/train/train.csv")
-    print data.describe()
+    # Don't forget to drop columns that are duplicate both
+    # in train and test datasets.
 
-    #y_boxplot(data)
-    y_id_scatterplot(data)
+    col_to_trans = ['y', 'X0', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X8']
 
+    for col in col_to_trans:
+        data[col] = col_transformation(data[col])
 
-    return None,None
+    return data.iloc[:,2:378],data['y']
+
+def col_transformation(col):
+
+    le = LabelEncoder()
+    le.fit(col)
+    col_trans = le.transform(col)
+
+    return col_trans
+
+def visualize_corr(data):
+
+    df = data.drop(['ID', 'y', 'X0', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X8'],axis=1)
+    #print df.corr()
+    plt.matshow(df.corr())
+    plt.show()
+    #sb.heatmap(df.corr())#, xticklabels=df.columns.values, yticklabels=df.columns.values)
 
 def y_id_scatterplot(data):
 
@@ -37,12 +63,43 @@ def y_boxplot(data):
     bp = ax.boxplot(y)
     plt.show(bp)
 
+def feature_selection(X,y):
+
+    model = RandomizedLogisticRegression(C=0.1,
+                                       sample_fraction=0.75,
+                                       n_resampling=10, selection_threshold=0.2, n_jobs=1,
+                                       random_state=42, verbose=True)
+
+    print "fitting started"
+    model.fit(X,y)
+    return model.get_support(indices=True)
+
+def pca(X,y):
+
+    LR = LogisticRegression()
+    LR.C = 0.0001
+    LR.penalty = 'l2'
+    pca = PCA()
+    pipe = Pipeline(steps=[('pca', pca), ('LR', LR)])
+
+    n_components = [x for x in range(10, 350, 10)]
+    Cs = [10 ** x for x in range(-6, 4, 1)]
+
+    estimator = GridSearchCV(pipe, dict(pca__n_components=n_components, LR__C=Cs), n_jobs=4)
+    estimator.fit(X,y)
+
+    return estimator
+
+
+
 def main():
 
     start_time = time.time()
     X,y = read_file()
 
-
+    feature_index = feature_selection(np.array(X),np.array(y))
+    print feature_index
+    #pca(X,y)
     print "--- %s Minutes ---" % ((time.time() - start_time)/60)
 
 if __name__ == "__main__": main()
