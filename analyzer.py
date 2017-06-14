@@ -10,11 +10,13 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
-from sklearn.linear_model import RandomizedLogisticRegression, LogisticRegression
+from sklearn.linear_model import RandomizedLogisticRegression, LogisticRegression, LinearRegression
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, cross_val_score
 from sklearn.preprocessing import normalize,scale
+import xgboost
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
 
 
 
@@ -24,7 +26,7 @@ def read_file():
     # Don't forget to drop columns that are duplicate both
     # in train and test datasets.
 
-    col_to_trans = ['y', 'X0', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X8']
+    col_to_trans = ['X0', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X8']
 
     for col in col_to_trans:
         data[col] = col_transformation(data[col])
@@ -90,6 +92,26 @@ def pca(X,y):
 
     return estimator
 
+def basic_regression(X,y):
+
+    models = [xgboost.XGBClassifier( learning_rate =0.1,
+                                 n_estimators=140,
+                                 max_depth=9,
+                                 min_child_weight=1,
+                                 gamma=0,
+                                 subsample=0.8,
+                                 colsample_bytree=0.8,
+                                 objective= 'reg:linear',
+                                 nthread=4,
+                                 scale_pos_weight=1,
+                                 seed=27)
+    , LinearRegression(), RandomForestRegressor()]
+    names = ['XGB','LR','RF']
+
+    for model,name in zip(models,names):
+        scores = cross_val_score(model, X, y, cv=4, n_jobs=-1)
+        print("Classifier: %s, Acr = %.6f" % (name, np.mean(scores)))
+
 
 
 def main():
@@ -97,8 +119,9 @@ def main():
     start_time = time.time()
     X,y = read_file()
 
-    feature_index = feature_selection(np.array(X),np.array(y))
-    print feature_index
+    basic_regression(X,y)
+    #feature_index = feature_selection(np.array(X),np.array(y))
+    #print feature_index
     #pca(X,y)
     print "--- %s Minutes ---" % ((time.time() - start_time)/60)
 
