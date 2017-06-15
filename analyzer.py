@@ -17,6 +17,8 @@ from sklearn.model_selection import GridSearchCV, cross_val_score
 from sklearn.preprocessing import normalize,scale
 import xgboost
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
+from sklearn.cross_validation import train_test_split
+from sklearn.metrics import accuracy_score, r2_score
 
 
 
@@ -30,6 +32,7 @@ def read_file():
 
     for col in col_to_trans:
         data[col] = col_transformation(data[col])
+
 
     return data.iloc[:,2:378],data['y']
 
@@ -84,33 +87,43 @@ def pca(X,y):
     pca = PCA()
     pipe = Pipeline(steps=[('pca', pca), ('LR', LR)])
 
-    n_components = [x for x in range(10, 350, 10)]
+    n_components = [x for x in range(10, 361, 50)]
     Cs = [10 ** x for x in range(-6, 4, 1)]
 
     estimator = GridSearchCV(pipe, dict(pca__n_components=n_components, LR__C=Cs), n_jobs=4)
     estimator.fit(X,y)
 
+    print "Just a print for breakpoint"
     return estimator
 
-def basic_regression(X,y):
+def r2_custom(estimator, X_test, y_test):
+    predictions = estimator.predict(X_test)
+    return r2_score(y_test, predictions)
 
-    models = [xgboost.XGBClassifier( learning_rate =0.1,
-                                 n_estimators=140,
-                                 max_depth=9,
-                                 min_child_weight=1,
-                                 gamma=0,
-                                 subsample=0.8,
-                                 colsample_bytree=0.8,
-                                 objective= 'reg:linear',
-                                 nthread=4,
-                                 scale_pos_weight=1,
-                                 seed=27)
-    , LinearRegression(), RandomForestRegressor()]
-    names = ['XGB','LR','RF']
+def linear_regression(X,y):
 
-    for model,name in zip(models,names):
-        scores = cross_val_score(model, X, y, cv=4, n_jobs=-1)
-        print("Classifier: %s, Acr = %.6f" % (name, np.mean(scores)))
+    name = 'LR'
+    model = LinearRegression(fit_intercept=True)
+    scores = cross_val_score(model, X, y, cv=5, scoring=r2_custom)
+    print("Classifier: %s, Acr = %.6f" % (name, np.mean(scores)))
+
+def xgb_regression(X,y):
+
+    name = "XGB"
+    model = xgboost.XGBRegressor(learning_rate=0.1,
+                         n_estimators=521,
+                         max_depth=4,
+                         min_child_weight=1,
+                         subsample=0.93,
+                         gamma=0,
+                         colsample_bytree=0.8,
+                         objective='reg:linear',
+                         nthread=4,
+                         scale_pos_weight=1,
+                         seed=27)
+
+    scores = cross_val_score(model, X, y, cv=5, scoring=r2_custom)
+    print("Classifier: %s, Acr = %.6f" % (name, np.mean(scores)))
 
 
 
@@ -119,7 +132,7 @@ def main():
     start_time = time.time()
     X,y = read_file()
 
-    basic_regression(X,y)
+    xgb_regression(X, y)
     #feature_index = feature_selection(np.array(X),np.array(y))
     #print feature_index
     #pca(X,y)
